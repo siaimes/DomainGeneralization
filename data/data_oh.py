@@ -107,13 +107,10 @@ def get_kd_single_dataloader(args):
 
 def single_train_dataloader(args, patches=False):
     val_datasets = []
-    val_datasets.append(ImageFolder_new(os.path.join(args.root, args.target, 'train/'), transform=img_tr))
     img_tr = get_train_transformers(args)
-    val_dataset = TestNewDataset(args.root, names,
-                                    labels,
-                                    transform=img_tr)
+    val_datasets.append(ImageFolder_new(os.path.join(args.root, args.target, 'train/'), transform=img_tr))
 
-    dataset = ConcatDataset([val_dataset])
+    dataset = ConcatDataset(val_datasets)
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=args.batch_size,
                                         shuffle=False,
@@ -121,7 +118,6 @@ def single_train_dataloader(args, patches=False):
                                         pin_memory=True,
                                         drop_last=False)
     return loader
-
 def get_val_dataloader(args, patches=False):
     img_tr = get_val_transformer(args)
     val_datasets = []
