@@ -58,6 +58,7 @@ def get_args():
     parser.add_argument("--drop", default=False, type=bool,  help=" ")
     parser.add_argument("--log_dir", default='.././exps', type=str,  help=" ")
     parser.add_argument("--name", default='log', type=str,  help=" ")
+    parser.add_argument("--net", default='resnet18', type=str, help=" ")
     parser.add_argument("--s_pretrained", default='/pretrain/resnet18.pth', type=str, help=" ")
     parser.add_argument("--warm_epochs", default=0, type=int, help="Use warm_epochs")
     parser.add_argument("--gpu", default='0', type=str, help=" ")
@@ -76,14 +77,22 @@ class Trainer:
         self._print(args)
 
         # build domain-specific models and domain-aggregated model
-        t_G_sp = [resnet.Featurer() for _ in range(len(args.single_model))]
-        t_C_sp = [resnet.Classifier(512, num_classes=args.n_classes) for _ in range(len(args.single_model))]
-        self.t_G_sp = [t_G_sp[i].to(device) for i in range(len(args.single_model))]
-        self.t_C_sp = [t_C_sp[i].to(device) for i in range(len(args.single_model))]
+        if args.net == 'resnet18':
+            t_G_sp = [resnet.Featurer() for _ in range(len(args.single_model))]
+            t_C_sp = [resnet.Classifier(512, num_classes=args.n_classes) for _ in range(len(args.single_model))]
+            t_G, t_C = resnet.Featurer(), resnet.Classifier(512, num_classes=args.n_classes)
+            s_G, s_C = resnet.Featurer(), resnet.Classifier(512, num_classes=args.n_classes)
+        elif args.net == 'resnet50':
+            t_G_sp = [resnet.featurer_50() for _ in range(len(args.single_model))]
+            t_C_sp = [resnet.Classifier(1024, num_classes=args.n_classes) for _ in range(len(args.single_model))]
+            t_G, t_C = resnet.featurer_50(), resnet.Classifier(1024, num_classes=args.n_classes)
+            s_G, s_C = resnet.featurer_50(), resnet.Classifier(1024, num_classes=args.n_classes)
 
-        t_G, t_C = resnet.Featurer(), resnet.Classifier(512, num_classes=args.n_classes)
-        self.t_G, self.t_C = t_G.to(device), t_C.to(device)
-        s_G, s_C = resnet.Featurer(), resnet.Classifier(512, num_classes=args.n_classes)
+        else:
+            print('We only support resnet18/50 here. Please define your own models in ./models')
+        self.t_G_sp = [t_G_sp[i].to(device) for i in range(len(args.single_model))]
+        self.t_C_sp = [t_C_sp[i].to(device) for i in range(len(args.single_model))]      
+        self.t_G, self.t_C = t_G.to(device), t_C.to(device)      
         self.s_G, self.s_C = s_G.to(device), s_C.to(device)
 
         # data loader
@@ -121,14 +130,11 @@ class Trainer:
         self.teacher_model = args.single_model
         self.student_model = args.student_model
         self.s_pretrained_addr = args.s_pretrained
-        if self.s_pretrained_addr:
-            try:
-                self.s_pretrained_addr = os.path.dirname(os.getcwd()) + self.s_pretrained_addr
-                load_params = torch.load(self.s_pretrained_addr)
-                self.s_G.load_state_dict(load_params, strict=False)
-                print('Load Pre-trained model from {}'.format(self.s_pretrained_addr))
-            except FileNotFoundError:
-                print("Pre-trained weights not found")
+        
+        self.s_pretrained_addr = os.path.dirname(os.getcwd()) + self.s_pretrained_addr
+        load_params = torch.load(self.s_pretrained_addr)
+        self.s_G.load_state_dict(load_params, strict=False)
+        print('Load Pre-trained model from {}'.format(self.s_pretrained_addr))
 
     def _do_student(self, epoch=None):
         # training fuction in one epoch

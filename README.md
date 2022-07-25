@@ -93,8 +93,12 @@ composed of Intra-ADR and Inter-ADR.
 
 ### Train and Eval
 To perform domain generalization in PACS, please run,
-#### Intra-ADR
 
+```bash
+bash mkdir pretrain
+```
+Put ImageNet pretrained model in ./pretrain
+#### Intra-ADR
 ```bash
 bash scripts/run_intra.sh PACS # PACS/officehome/VLCS/Domainnet
 ```

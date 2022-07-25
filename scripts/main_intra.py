@@ -55,6 +55,7 @@ def get_args():
     parser.add_argument("--drop", default=False, type=bool, help=" ")
     parser.add_argument("--log_dir", default='.././exps', type=str, help=" ")
     parser.add_argument("--name", default='log', type=str, help=" ")
+    parser.add_argument("--net", default='resnet18', type=str, help=" ")
     parser.add_argument("--pretrained", default='/pretrain/resnet18.pth', type=str, help=" ")
     parser.add_argument("--warm_epochs", default=0, type=int, help="Use adc")
     parser.add_argument("--gpu", default='0', type=str, help=" ")
@@ -73,7 +74,12 @@ class Trainer:
         self._print = log.info
         self._print(args)
         # build model
-        s_G, s_C = resnet.Featurer(), resnet.Classifier(512, num_classes=args.n_classes)
+        if args.net == 'resnet18':
+            s_G, s_C = resnet.Featurer(), resnet.Classifier(512, num_classes=args.n_classes)
+        elif args.net == 'resnet50':
+            s_G, s_C = resnet.featurer_50(), resnet.Classifier(1024, num_classes=args.n_classes)
+        else:
+            print('We only support resnet18/50 here. Please define your own models in ./models')
         self.s_G, self.s_C = s_G.to(device), s_C.to(device)
         # data loader
         self.source_loader, self.val_loader, self.target_loader = get_intra_loader(args)
@@ -105,14 +111,11 @@ class Trainer:
         self.epochs = args.epochs
         self.warm_epochs = args.warm_epochs
         self.pretrained_addr = args.pretrained
-        if self.pretrained_addr:
-            try:
-                self.pretrained_addr = os.path.dirname(os.getcwd()) + self.pretrained_addr
-                load_params = torch.load(self.pretrained_addr)
-                self.s_G.load_state_dict(load_params, strict=False)
-                print('Load Pre-trained model from {}'.format(self.pretrained_addr))
-            except FileNotFoundError:
-                print("Pre-trained weights not found")
+        
+        self.pretrained_addr = os.path.dirname(os.getcwd()) + self.pretrained_addr
+        load_params = torch.load(self.pretrained_addr)
+        self.s_G.load_state_dict(load_params, strict=False)
+        print('Load Pre-trained model from {}'.format(self.pretrained_addr))
 
     def _do_student(self, epoch=None):
         # training fuction in one epoch
